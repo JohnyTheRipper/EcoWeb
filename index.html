@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Basic Platformer Game</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #4CAF50; /* green */
+        }
+
+        #game-container {
+            position: relative;
+            width: 800px;
+            height: 400px;
+            margin: 100px auto;
+            background-color: #87CEEB; /* sky blue */
+            border: 5px solid #654321; /* brown */
+        }
+
+        #player {
+            position: absolute;
+            bottom: 20px; /* Adjusted to have space above the player */
+            left: 0;
+            width: 50px;
+            height: 50px;
+            background-color: #FF4500; /* orange */
+            border-radius: 50%;
+        }
+
+        #platform {
+            position: absolute;
+            bottom: 100px;
+            left: 200px;
+            width: 200px;
+            height: 20px;
+            background-color: #000; /* black */
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div id="player"></div>
+        <div id="platform"></div>
+    </div>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const player = document.getElementById("player");
+            const platform = document.getElementById("platform");
+
+            let velocityX = 0;
+            let velocityY = 0;
+            let gravity = 0.6;
+            let jumpStrength = 12;
+            let playerSpeed = 5;
+            let positionX = 0;
+            let positionY = 0;
+            let isGrounded = false;
+
+            // Set initial position of the player
+            positionY = platform.offsetTop + platform.offsetHeight + 20; // Adjusted for space above the player
+
+            function update() {
+                // Apply gravity
+                velocityY -= gravity;
+
+                // Update position based on velocity
+                positionX += velocityX;
+                positionY -= velocityY;
+
+                // Check for collisions with the ground
+                if (positionY <= platform.offsetTop + platform.offsetHeight) {
+                    positionY = platform.offsetTop + platform.offsetHeight;
+                    velocityY = 0;
+                    isGrounded = true;
+                } else {
+                    isGrounded = false;
+                }
+
+                // Prevent player from going out of bounds
+                if (positionX < 0) {
+                    positionX = 0;
+                }
+                if (positionX > 800 - player.offsetWidth) {
+                    positionX = 800 - player.offsetWidth;
+                }
+
+                // Apply new positions
+                player.style.bottom = positionY + "px";
+                player.style.left = positionX + "px";
+
+                requestAnimationFrame(update);
+            }
+
+            function jump() {
+                if (isGrounded) {
+                    velocityY = jumpStrength;
+                    isGrounded = false;
+                }
+            }
+
+            document.addEventListener("keydown", function(event) {
+                if (event.code === "Space") {
+                    jump();
+                }
+                if (event.code === "ArrowLeft") {
+                    velocityX = -playerSpeed;
+                }
+                if (event.code === "ArrowRight") {
+                    velocityX = playerSpeed;
+                }
+            });
+
+            document.addEventListener("keyup", function(event) {
+                if (event.code === "ArrowLeft" || event.code === "ArrowRight") {
+                    velocityX = 0;
+                }
+            });
+
+            update();
+        });
+    </script>
+</body>
+</html>
