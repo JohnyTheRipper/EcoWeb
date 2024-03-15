@@ -1,128 +1,126 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Basic Platformer Game</title>
-    <style>
-        body {
-            margin: 0;
-            padding: 0;
-            overflow: hidden;
-            background-color: #4CAF50; /* green */
-        }
-
-        #game-container {
-            position: relative;
-            width: 800px;
-            height: 400px;
-            margin: 100px auto;
-            background-color: #87CEEB; /* sky blue */
-            border: 5px solid #654321; /* brown */
-        }
-
-        #player {
-            position: absolute;
-            bottom: 20px; /* Adjusted to have space above the player */
-            left: 0;
-            width: 50px;
-            height: 50px;
-            background-color: #FF4500; /* orange */
-            border-radius: 50%;
-        }
-
-        #platform {
-            position: absolute;
-            bottom: 100px;
-            left: 200px;
-            width: 200px;
-            height: 20px;
-            background-color: #000; /* black */
-            border-radius: 10px;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Platformer Game</title>
+<style>
+    body, html {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        height: 100%;
+    }
+    canvas {
+        display: block;
+        margin: auto;
+        background-color: #fff;
+        border: 1px solid #000;
+    }
+</style>
 </head>
 <body>
-    <div id="game-container">
-        <div id="player"></div>
-        <div id="platform"></div>
-    </div>
-    <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            const player = document.getElementById("player");
-            const platform = document.getElementById("platform");
+<canvas id="gameCanvas"></canvas>
+<script>
+    // Get the canvas element
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
 
-            let velocityX = 0;
-            let velocityY = 0;
-            let gravity = 0.6;
-            let jumpStrength = 12;
-            let playerSpeed = 5;
-            let positionX = 0;
-            let positionY = 0;
-            let isGrounded = false;
+    // Set canvas size to match screen size
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
 
-            // Set initial position of the player
-            positionY = platform.offsetTop + platform.offsetHeight + 20; // Adjusted for space above the player
+    // Player properties
+    const playerWidth = 50;
+    const playerHeight = 50;
+    let playerX = canvas.width / 2 - playerWidth / 2;
+    let playerY = canvas.height - playerHeight;
+    let playerSpeed = 5;
+    let gravity = 0.5; // Lower gravity for smoother jumping
+    let jumpStrength = 10; // Lower jump strength for smoother jumping
+    let jumpVelocity = 0;
+    let isJumping = false;
 
-            function update() {
-                // Apply gravity
-                velocityY -= gravity;
+    // Platform properties
+    const platformWidth = 100;
+    const platformHeight = 20;
+    const platforms = [
+        { x: 100, y: canvas.height - 100 },
+        { x: 300, y: canvas.height - 200 },
+        { x: 500, y: canvas.height - 150 },
+        { x: 700, y: canvas.height - 250 },
+    ];
 
-                // Update position based on velocity
-                positionX += velocityX;
-                positionY -= velocityY;
+    // Handle keyboard input
+    const keys = [];
+    window.addEventListener('keydown', (e) => {
+        keys[e.keyCode] = true;
+    });
+    window.addEventListener('keyup', (e) => {
+        keys[e.keyCode] = false;
+    });
 
-                // Check for collisions with the ground
-                if (positionY <= platform.offsetTop + platform.offsetHeight) {
-                    positionY = platform.offsetTop + platform.offsetHeight;
-                    velocityY = 0;
-                    isGrounded = true;
-                } else {
-                    isGrounded = false;
-                }
+    // Update player position
+    function updatePlayer() {
+        // Move left
+        if ((keys[37] || keys[65]) && playerX > 0) { // Left arrow or A key
+            playerX -= playerSpeed;
+        }
+        // Move right
+        if ((keys[39] || keys[68]) && playerX < canvas.width - playerWidth) { // Right arrow or D key
+            playerX += playerSpeed;
+        }
+        // Jump
+        if ((keys[32] || keys[38]) && !isJumping) { // Spacebar or Up arrow
+            isJumping = true;
+            jumpVelocity = -jumpStrength; // Start with negative velocity for upward movement
+        }
 
-                // Prevent player from going out of bounds
-                if (positionX < 0) {
-                    positionX = 0;
-                }
-                if (positionX > 800 - player.offsetWidth) {
-                    positionX = 800 - player.offsetWidth;
-                }
+        // Update jump velocity
+        if (isJumping) {
+            playerY += jumpVelocity;
+            jumpVelocity += gravity; // Apply gravity to reduce jump velocity
+        }
+        
+        // Collision with ground
+        if (playerY + playerHeight > canvas.height) {
+            playerY = canvas.height - playerHeight;
+            isJumping = false;
+            jumpVelocity = 0;
+        }
 
-                // Apply new positions
-                player.style.bottom = positionY + "px";
-                player.style.left = positionX + "px";
-
-                requestAnimationFrame(update);
+        // Collision with platforms
+        platforms.forEach(platform => {
+            if (
+                playerX < platform.x + platformWidth &&
+                playerX + playerWidth > platform.x &&
+                playerY + playerHeight > platform.y &&
+                playerY < platform.y + platformHeight
+            ) {
+                // If player collides with a platform, stop jumping and reset Y position
+                playerY = platform.y - playerHeight;
+                isJumping = false;
+                jumpVelocity = 0;
             }
-
-            function jump() {
-                if (isGrounded) {
-                    velocityY = jumpStrength;
-                    isGrounded = false;
-                }
-            }
-
-            document.addEventListener("keydown", function(event) {
-                if (event.code === "Space") {
-                    jump();
-                }
-                if (event.code === "ArrowLeft") {
-                    velocityX = -playerSpeed;
-                }
-                if (event.code === "ArrowRight") {
-                    velocityX = playerSpeed;
-                }
-            });
-
-            document.addEventListener("keyup", function(event) {
-                if (event.code === "ArrowLeft" || event.code === "ArrowRight") {
-                    velocityX = 0;
-                }
-            });
-
-            update();
         });
-    </script>
+
+        // Draw player
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#f00';
+        ctx.fillRect(playerX, playerY, playerWidth, playerHeight);
+
+        // Draw platforms
+        ctx.fillStyle = '#00f';
+        platforms.forEach(platform => {
+            ctx.fillRect(platform.x, platform.y, platformWidth, platformHeight);
+        });
+
+        // Request animation frame
+        requestAnimationFrame(updatePlayer);
+    }
+
+    // Start the game loop
+    updatePlayer();
+</script>
 </body>
 </html>
