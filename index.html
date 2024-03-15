@@ -36,7 +36,7 @@
             // Array to store plant positions
             var plants = [];
 
-            // Array to store herbivore positions
+            // Array to store herbivores and their last meal time
             var herbivores = [];
 
             // Function to draw a circle
@@ -170,14 +170,20 @@
                     herbivore.x += Math.cos(angle) * 5; // Adjust the speed here (5 pixels per move)
                     herbivore.y += Math.sin(angle) * 5;
 
-                    // If herbivore touches the plant, remove the plant
+                    // If herbivore touches the plant, remove the plant and update last meal time
                     if (minDistance <= 5) {
                         plants.splice(nearestPlantIndex, 1);
+                        herbivore.lastMealTime = Date.now(); // Update last meal time
                     }
                 } else {
                     // If no nearby plants or they are further than 100px, move randomly
                     herbivore.x += Math.random() * 20 - 10;
                     herbivore.y += Math.random() * 20 - 10;
+                }
+
+                // Check if herbivore hasn't eaten for 10 seconds, delete if so
+                if (herbivore.lastMealTime && Date.now() - herbivore.lastMealTime > 10000) {
+                    herbivores.splice(herbivores.indexOf(herbivore), 1);
                 }
 
                 // Ensure the herbivore stays within the canvas bounds
@@ -198,6 +204,19 @@
                 }
             }
 
+            // Function to spawn a new herbivore
+            function spawnNewHerbivore() {
+                // Generate random coordinates within the canvas bounds
+                var newX = Math.random() * canvas.width;
+                var newY = Math.random() * canvas.height;
+
+                // Add the new herbivore to the herbivores array with last meal time
+                herbivores.push({ x: newX, y: newY, lastMealTime: Date.now() });
+
+                // Draw the new herbivore
+                drawCircle(context, newX, newY, 5, 'blue');
+            }
+
             // Initial plants (randomly positioned)
             for (var i = 0; i < 5; i++) {
                 var randX = Math.random() * canvas.width;
@@ -208,14 +227,11 @@
 
             // Initial herbivores (randomly positioned)
             for (var i = 0; i < 10; i++) {
-                var randX = Math.random() * canvas.width;
-                var randY = Math.random() * canvas.height;
-                drawCircle(context, randX, randY, 5, 'blue');
-                herbivores.push({ x: randX, y: randY });
+                spawnNewHerbivore(); // Spawn new herbivore
             }
 
             // Check plant proximity every 2.5 seconds
-            setInterval(checkPlantProximity, 2500);
+            setInterval(checkPlantProximity, 5000);
 
             // Start moving the herbivores
             moveHerbivores();
