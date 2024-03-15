@@ -3,26 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Full Screen Canvas with Plants</title>
+    <title>Fixed Size Canvas with Plants and Herbivores</title>
     <style>
-        /* Make the canvas fill the entire screen */
+        /* Center the canvas within the window */
         body, html {
             margin: 0;
             padding: 0;
-            overflow: hidden; /* Hide scrollbars */
             width: 100%;
             height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #f0f0f0;
         }
         canvas {
-            display: block;
-            width: 100%;
-            height: 100%;
+            border: 1px solid black;
+            background-color: white;
         }
     </style>
 </head>
 <body>
     <!-- Canvas element -->
-    <canvas id="fullscreenCanvas"></canvas>
+    <canvas id="fullscreenCanvas" width="600" height="400"></canvas>
 
     <script>
         // JavaScript code for drawing on the canvas
@@ -33,6 +35,9 @@
 
             // Array to store plant positions
             var plants = [];
+
+            // Array to store herbivore positions
+            var herbivores = [];
 
             // Function to draw a circle
             function drawCircle(ctx, x, y, radius, color) {
@@ -45,27 +50,79 @@
 
             // Function to check if two plants are within 50px of each other
             function checkPlantProximity() {
+                var clusters = [];
+
                 for (var i = 0; i < plants.length; i++) {
-                    for (var j = i + 1; j < plants.length; j++) {
-                        var dx = plants[i].x - plants[j].x;
-                        var dy = plants[i].y - plants[j].y;
+                    var clusterFound = false;
+
+                    for (var j = 0; j < clusters.length; j++) {
+                        var dx = plants[i].x - clusters[j].x;
+                        var dy = plants[i].y - clusters[j].y;
                         var distance = Math.sqrt(dx * dx + dy * dy);
+
                         if (distance < 50) {
-                            spawnNewPlant();
-                            return;
+                            // Add the plant to the cluster
+                            clusters[j].plants.push(plants[i]);
+                            clusterFound = true;
+                            break;
                         }
+                    }
+
+                    if (!clusterFound) {
+                        // Create a new cluster for the plant
+                        clusters.push({ x: plants[i].x, y: plants[i].y, plants: [plants[i]], name: 'Cluster ' + (clusters.length + 1) });
+                    }
+                }
+
+                // Check if clusters are within 50px of each other
+                for (var i = 0; i < clusters.length; i++) {
+                    for (var j = i + 1; j < clusters.length; j++) {
+                        var dx = clusters[i].x - clusters[j].x;
+                        var dy = clusters[i].y - clusters[j].y;
+                        var distance = Math.sqrt(dx * dx + dy * dy);
+
+                        if (distance < 50) {
+                            // Determine which cluster is larger
+                            var largerCluster = clusters[i].plants.length > clusters[j].plants.length ? clusters[i] : clusters[j];
+                            var smallerCluster = clusters[i].plants.length > clusters[j].plants.length ? clusters[j] : clusters[i];
+
+                            // Merge smaller cluster into larger cluster
+                            for (var k = 0; k < smallerCluster.plants.length; k++) {
+                                largerCluster.plants.push(smallerCluster.plants[k]);
+                            }
+
+                            // Remove smaller cluster
+                            clusters.splice(clusters.indexOf(smallerCluster), 1);
+
+                            // Exit the loop after merging
+                            break;
+                        }
+                    }
+                }
+
+                // Check each cluster
+                for (var i = 0; i < clusters.length; i++) {
+                    var cluster = clusters[i];
+
+                    // If a cluster has more than one plant, spawn new plants within it
+                    if (cluster.plants.length > 1) {
+                        for (var j = 0; j < cluster.plants.length; j++) {
+                            spawnNewPlant(cluster.x, cluster.y);
+                        }
+                    } else {
+                        // If a plant is not in a cluster, spawn a new plant near it
+                        setTimeout(function(x, y) {
+                            spawnNewPlant(x, y);
+                        }, 5000, cluster.x, cluster.y);
                     }
                 }
             }
 
             // Function to spawn a new plant
-            function spawnNewPlant() {
-                // Randomly select one of the existing plants
-                var existingPlant = plants[Math.floor(Math.random() * plants.length)];
-
+            function spawnNewPlant(x, y) {
                 // Generate random coordinates within 50px in any direction from the selected plant
-                var newX = existingPlant.x + Math.random() * 100 - 50;
-                var newY = existingPlant.y + Math.random() * 100 - 50;
+                var newX = x + Math.random() * 100 - 50;
+                var newY = y + Math.random() * 100 - 50;
 
                 // Ensure the new coordinates are within the canvas bounds
                 newX = Math.max(5, Math.min(canvas.width - 5, newX));
@@ -78,13 +135,90 @@
                 drawCircle(context, newX, newY, 5, 'green');
             }
 
-            // Initial plants
-            drawCircle(context, 50, 50, 5, 'green');   // Plant 1
-            drawCircle(context, 150, 150, 5, 'green'); // Plant 2
-            plants.push({ x: 50, y: 50 }, { x: 150, y: 150 });
+            // Function to move the herbivores every second
+            function moveHerbivores() {
+                for (var i = 0; i < herbivores.length; i++) {
+                    moveHerbivore(herbivores[i]);
+                }
+
+                // Move the herbivores again after 1 second
+                setTimeout(moveHerbivores, 1000);
+            }
+
+            // Function to move a single herbivore
+            function moveHerbivore(herbivore) {
+                // Find the nearest plant
+                var nearestPlantIndex = -1;
+                var minDistance = Infinity;
+
+                for (var i = 0; i < plants.length; i++) {
+                    var dx = herbivore.x - plants[i].x;
+                    var dy = herbivore.y - plants[i].y;
+                    var distance = Math.sqrt(dx * dx + dy * dy);
+
+                    if (distance < minDistance) {
+                        minDistance = distance;
+                        nearestPlantIndex = i;
+                    }
+                }
+
+                // If a plant is found within 100px
+                if (minDistance < 100) {
+                    // Move towards the nearest plant
+                    var plant = plants[nearestPlantIndex];
+                    var angle = Math.atan2(plant.y - herbivore.y, plant.x - herbivore.x);
+                    herbivore.x += Math.cos(angle) * 5; // Adjust the speed here (5 pixels per move)
+                    herbivore.y += Math.sin(angle) * 5;
+
+                    // If herbivore touches the plant, remove the plant
+                    if (minDistance <= 5) {
+                        plants.splice(nearestPlantIndex, 1);
+                    }
+                } else {
+                    // If no nearby plants or they are further than 100px, move randomly
+                    herbivore.x += Math.random() * 20 - 10;
+                    herbivore.y += Math.random() * 20 - 10;
+                }
+
+                // Ensure the herbivore stays within the canvas bounds
+                herbivore.x = Math.max(5, Math.min(canvas.width - 5, herbivore.x));
+                herbivore.y = Math.max(5, Math.min(canvas.height - 5, herbivore.y));
+
+                // Clear the canvas
+                context.clearRect(0, 0, canvas.width, canvas.height);
+
+                // Redraw the plants
+                for (var i = 0; i < plants.length; i++) {
+                    drawCircle(context, plants[i].x, plants[i].y, 5, 'green');
+                }
+
+                // Draw the herbivores
+                for (var i = 0; i < herbivores.length; i++) {
+                    drawCircle(context, herbivores[i].x, herbivores[i].y, 5, 'blue');
+                }
+            }
+
+            // Initial plants (randomly positioned)
+            for (var i = 0; i < 5; i++) {
+                var randX = Math.random() * canvas.width;
+                var randY = Math.random() * canvas.height;
+                drawCircle(context, randX, randY, 5, 'green');
+                plants.push({ x: randX, y: randY });
+            }
+
+            // Initial herbivores (randomly positioned)
+            for (var i = 0; i < 10; i++) {
+                var randX = Math.random() * canvas.width;
+                var randY = Math.random() * canvas.height;
+                drawCircle(context, randX, randY, 5, 'blue');
+                herbivores.push({ x: randX, y: randY });
+            }
 
             // Check plant proximity every 2.5 seconds
             setInterval(checkPlantProximity, 2500);
+
+            // Start moving the herbivores
+            moveHerbivores();
         };
     </script>
 </body>
